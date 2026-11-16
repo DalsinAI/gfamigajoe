@@ -1,0 +1,9 @@
+# What this port builds on: fetched at build time, never shipped.
+# JOE, Joe's Own Editor (GPL-2.0) 4.8, tag releases/joe-4.8
+JOE_GIT=https://github.com/joe-editor/joe.git
+JOE_COMMIT=d52b474a44b2062cf246cbc9430ca269f1bff58f
+JOE_VERSION=4.8
+# Our own pieces, fetched at these commits
+# fpuauto (common/fpuauto): the FPU when there is one
+FPA_REPO=https://github.com/DalsinAI/amicradle-guest
+FPA_COMMIT=4a784c84b878fe0e9abade7006e67e1ded9b165c
