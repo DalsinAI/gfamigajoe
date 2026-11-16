@@ -75,10 +75,15 @@ joe_probe() {
             printf '%s\n' '#include <math.h>' '#include <stdlib.h>' '#include <string.h>' \
                 '#include <stdio.h>' '#include <ctype.h>' '#include <time.h>' '#include <unistd.h>' \
                 '#include <locale.h>' '#include <sys/types.h>' '#include <sys/stat.h>' > "$t/p.c"
-            case $f in utime) echo '#include <utime.h>' >> "$t/p.c";; esac
-            printf 'int main(void) { void (*volatile p)(void) = (void (*)(void))%s; return p != 0; }\n' "$f" >> "$t/p.c"
+            case $f in
+            utime) # ufile.c's use: struct utimbuf from <utime.h> or <sys/utime.h>
+                grep -q '^#define HAVE_UTIME_H' "$2" && echo '#include <utime.h>' >> "$t/p.c"
+                grep -q '^#define HAVE_SYS_UTIME_H' "$2" && echo '#include <sys/utime.h>' >> "$t/p.c"
+                echo 'int main(void) { struct utimbuf u; u.actime = 0; u.modtime = 0; return utime("x", &u); }' >> "$t/p.c";;
+            *) printf 'int main(void) { void (*volatile p)(void) = (void (*)(void))%s; return p != 0; }\n' "$f" >> "$t/p.c";;
+            esac
             # shellcheck disable=SC2086
-            if $PROBE_CC -o "$t/p" "$t/p.c" -lm > /dev/null 2>&1; then
+            if $PROBE_CC -Werror=implicit-function-declaration -o "$t/p" "$t/p.c" -lm > /dev/null 2>&1; then
                 echo "#define HAVE_$(echo "$f" | tr '[:lower:]' '[:upper:]') 1"
             fi
         done

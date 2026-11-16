@@ -16,6 +16,9 @@
 set -eu
 # everything on stdout: the stove log keeps only stdout
 exec 2>&1
+# the stage a failure stopped in, in the stove log
+STAGE=start
+trap 'rc=$?; [ $rc = 0 ] || echo "build-amiga.sh: failed (exit $rc) in stage: $STAGE"' EXIT
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$HERE/joe.lock"
 . "$HERE/scripts/joe-common.sh"
@@ -27,12 +30,14 @@ mkdir -p "$WORK/deps" "$OUT"; OUT=$(cd "$OUT" && pwd)
 t0=$(date +%s)
 
 # --- the PC tests first: the same sources, keys through the GFOS terminal code ---
+STAGE="host tests"
 if [ "${HOST_TESTS:-1}" != 0 ] && command -v "${HOST_CC:-cc}" > /dev/null 2>&1; then
     WORK="$WORK/host" sh "$HERE/tests/host-joe.sh" > "$WORK/host-tests.log" 2>&1 || { tail -40 "$WORK/host-tests.log"; exit 1; }
     grep -E "checks passed" "$WORK/host-tests.log"
 fi
 
 # --- fpuauto: libfpuauto.a and its link specs ---------------------------------
+STAGE="fpuauto"
 FPD="$WORK/deps/fpuauto"
 if [ "$(git -C "$FPD" rev-parse HEAD 2>/dev/null)" != "$FPA_COMMIT" ]; then
     rm -rf "$FPD"; mkdir -p "$FPD"; git -C "$FPD" init -q
@@ -53,6 +58,7 @@ if [ ! -f "$FAL/libfpuauto.a" ] || [ "$(cat "$FAL/.rev" 2>/dev/null)" != "$FPA_C
 fi
 
 # --- JOE at its pinned commit, patches/, the probe -----------------------------
+STAGE="source + probe"
 SRC="$WORK/joe"
 joe_source "$SRC"
 LINK="m68k-amigaos-gcc -noixemul -m68040 -specs=$HERE/scripts/m68k-soft-m68040.specs -specs=$FA/fpuauto.specs -L$FAL"
@@ -60,6 +66,7 @@ PROBE_CC="$LINK" joe_probe "$SRC" "$WORK/autoconf.h"
 echo "probe: $(grep -c '^#define HAVE_' "$WORK/autoconf.h") found"
 
 # --- compile -------------------------------------------------------------------
+STAGE="compile"
 LATE=""
 if m68k-amigaos-gcc -fno-late-combine-instructions -S -o /dev/null -x c /dev/null 2>/dev/null; then LATE="-fno-late-combine-instructions"; fi
 # no loops turned into memset/memcpy calls (GCC 16), address 0 is memory
@@ -88,15 +95,17 @@ M="$O/Makefile"
     echo "all: \$(OBJS)"
     echo "-include *.d"
 } > "$M"
-(cd "$O" && nice -n 19 make -k -j"$JOBS" all > make.log 2>&1) || { grep -E 'error' "$O/make.log" | head -40; tail -20 "$O/make.log"; exit 1; }
+(cd "$O" && nice -n 19 make -k -j"$JOBS" all > make.log 2>&1) || { grep -E ': (fatal )?error' "$O/make.log" | head -40; grep -v "^m68k-amigaos-gcc " "$O/make.log" | tail -20; exit 1; }
 echo "compile: $(( $(date +%s) - t0 )) s"
 
 # --- link: soft-float specs, then fpuauto's -------------------------------------
+STAGE="link"
 # shellcheck disable=SC2046
 $LINK -o "$O/joe.debug" $(cd "$O" && for f in $(sed -n 's/^OBJS =//p' Makefile); do echo "$O/$f"; done) \
     -lm > "$O/link.log" 2>&1 || { head -60 "$O/link.log"; exit 1; }
 
 # --- the GFOpenUp part: Parts/JOE -----------------------------------------------
+STAGE="part"
 P="$OUT/Parts/JOE"; rm -rf "$P"; mkdir -p "$P/C" "$P/Docs/JOE"
 m68k-amigaos-strip -o "$P/C/joe" "$O/joe.debug"
 sh "$HERE/scripts/joe-data.sh" "$SRC" "$P/Utilities/JOE"
