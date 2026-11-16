@@ -11,7 +11,7 @@ CC=${HOST_CC:-cc}
 WORK=${WORK:-"$HERE/build-host"}; mkdir -p "$WORK"; WORK=$(cd "$WORK" && pwd)
 SRC="$WORK/joe-src"; joe_source "$SRC"
 PROBE_CC="$CC" joe_probe "$SRC" "$WORK/autoconf.h"
-CF="-O1 -g -w -I$WORK -I$HERE/amiga -I$SRC/joe -include $WORK/autoconf.h -include $HERE/amiga/joe_gfos.h \
+CF="-O1 -g -w -Werror=implicit-function-declaration -Werror=int-conversion -Werror=incompatible-pointer-types -I$WORK -I$HERE/amiga -I$SRC/joe -include $WORK/autoconf.h -include $HERE/amiga/joe_gfos.h \
  -DJOERC=\"SYS:Utilities/JOE/\" -DJOEDATA=\"SYS:Utilities/JOE/\""
 O="$WORK/obj"; mkdir -p "$O"
 for f in $JOE_SRCS; do

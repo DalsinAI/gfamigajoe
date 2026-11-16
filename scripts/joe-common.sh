@@ -63,7 +63,7 @@ joe_probe() {
         echo "#endif"
         for h in errno.h fcntl.h locale.h stdlib.h string.h sys/param.h sys/time.h \
                  unistd.h utime.h sys/utime.h sys/types.h sys/stat.h limits.h signal.h \
-                 stddef.h time.h dirent.h; do
+                 stddef.h time.h dirent.h sys/wait.h; do
             printf '#include <%s>\nint main(void) { return 0; }\n' "$h" > "$t/p.c"
             # shellcheck disable=SC2086
             if $PROBE_CC -c -o "$t/p.o" "$t/p.c" > /dev/null 2>&1; then

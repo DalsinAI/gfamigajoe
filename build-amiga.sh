@@ -14,6 +14,8 @@
 #   GFOpenUpTool INSTALL Parts/JOE
 # MIT, Copyright (c) 2026 AmiCradle Team.
 set -eu
+# everything on stdout: the stove log keeps only stdout
+exec 2>&1
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$HERE/joe.lock"
 . "$HERE/scripts/joe-common.sh"
